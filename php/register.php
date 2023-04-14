@@ -26,11 +26,13 @@ $database = "authenticate";
         $stmt1->bind_param("sss", $username, $email, $password);
         $stmt1-> execute();
         $stmt1-> close();
-        $response = "success";
+        $response = $email;
   }
 
   echo $response;
   $stmt->close();
   $conn->close();
+
+
 
 ?>

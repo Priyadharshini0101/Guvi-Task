@@ -15,13 +15,13 @@ $("#form").submit(function (e) {
           data: {username:username,email:email,password:password},
 
           success:function(response) {
-          console.log(response);
-            if(response == "success"){
-             alert("Registered Successfully");
-            window.location.href = page;
-            localStorage.setItem("user",response);
-            }else{
+        
+            if(response == "invalid credentials"){
               alert("Email already exists");
+            }else{
+              alert("Registered Successfully");
+              window.location.href = page;
+              localStorage.setItem("user",response);
             }
           },
                 

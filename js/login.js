@@ -15,7 +15,7 @@ $("#form").submit(function (e) {
         data: {email:email,password:password},
 
         success:function(response) {
-    
+    console.log(response);
           if(response == "invalid credentials"){
             alert("Incorrect email or password");
           }else{
