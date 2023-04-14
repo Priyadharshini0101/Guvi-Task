@@ -1,33 +1,36 @@
-<!DOCTYPE html>  
-<html>  
-<head>  
-  <meta charset="UTF-8">  
-  <title>Login</title>  
-<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css">  
-<link rel="stylesheet" href="css/style.css">
-</head>    
-<body>  
-  <div class="global-container">  
-    <div class="card login-form">  
-    <div class="card-body">  
-        <div class="card-text">  
-            <form>  
-                <div class="form-group">  
-                    <label for="exampleInputEmail1">Email address </label>  
-                    <input type="email" class="form-control form-control-sm" id="exampleInputEmail1" aria-describedby="emailHelp">  
-                </div>  
-                <div class="form-group">  
-                    <label for="exampleInputPassword1">Password </label>  
-                    <input type="password" class="form-control form-control-sm" id="exampleInputPassword1">  
-                </div>  
-                <button type="submit" class="btn btn-primary btn-block"> Sign In</button>  
-                  
-                <div class="option display center">  
-                    Don't have an account? <a href="register.html"> Sign Up </a>  
-                </div>  
-            </form>  
-        </div>  
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Login</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="global-container">
+        <div class="card login-form">
+            <div class="card-body">
+                <div class="card-text">
+                    <form autocomplete="off" id="form">
+                        <div class="form-group">
+                            <label for="email">Email address </label>
+                            <input type="email" class="form-control form-control-sm" id="email" name="email"
+                                aria-describedby="emailHelp">
+                        </div>
+                        <div class="form-group">
+                            <label for="password">Password </label>
+                            <input type="password" class="form-control form-control-sm" id="password" name="password">
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block"> Sign In</button>
 
-</div>  
-</body>  
-</html>  
+                        <div class="option display center">
+                            Don't have an account? <a href="register.html"> Sign Up </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+            <script type="text/javascript" src="./js/login.js"></script>
+</body>
+
+</html>

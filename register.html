@@ -1,37 +1,45 @@
-<!DOCTYPE html>  
-<html>  
-<head>  
-  <meta charset="UTF-8">  
-  <title>Register</title>  
-<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css">  
-<link rel="stylesheet" href="css/style.css">
-</head>    
-<body>  
-  <div class="global-container">  
-    <div class="card login-form">  
-    <div class="card-body">  
-        <div class="card-text">  
-            <form>  
-                <div class="form-group">  
-                    <label for="exampleInputIsername1"> Username </label>  
-                    <input type="username" class="form-control form-control-sm" id="exampleInputIsername1" aria-describedby="usernameHelp">  
-                </div> 
-                <div class="form-group">  
-                    <label for="exampleInputEmail1">Email address </label>  
-                    <input type="email" class="form-control form-control-sm" id="exampleInputEmail1" aria-describedby="emailHelp">  
-                </div>  
-                <div class="form-group">  
-                    <label for="exampleInputPassword1">Password </label>  
-                    <input type="password" class="form-control form-control-sm" id="exampleInputPassword1">  
-                </div>  
-                <button type="submit" class="btn btn-primary btn-block"> Sign Up</button>   
-                  
-                <div class="option display center">  
-                    Already have a account? <a href="login.html"> Sign In </a>  
-                </div>  
-            </form>  
-        </div>  
+<!DOCTYPE html>
+<html>
 
-</div>  
-</body>  
-</html>  
+<head>
+    <meta charset="UTF-8">
+    <title>Register</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <div class="global-container">
+        <div class="card login-form">
+            <div class="card-body">
+                <div class="card-text">
+                    <form autocomplete="off" id="form">
+                        <div class="form-group">
+                            <label for="username"> Username </label>
+                            <input type="username" name="username" class="form-control form-control-sm" id="username"
+                                aria-describedby="usernameHelp">
+                        </div>
+                        <div class="form-group">
+                            <label for="email">Email address </label>
+                            <input type="email" name="email" class="form-control form-control-sm" id="email"
+                                aria-describedby="emailHelp">
+                        </div>
+                        <div class="form-group">
+                            <label for="password">Password </label>
+                            <input type="password" name="password" class="form-control form-control-sm" id="password">
+                        </div>
+                        <button type="submit" id="submit" class="btn btn-primary btn-block"> Sign Up</button>
+
+                        <div class="option display center">
+                            Already have a account? <a href="login.html"> Sign In </a>
+                        </div>
+                    </form>
+                </div>
+
+
+            </div>
+            <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+            <script type="text/javascript" src="./js/register.js"></script>
+</body>
+
+</html>
