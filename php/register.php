@@ -23,7 +23,7 @@ $database = "authenticate";
   $conn_mongoDB = new MongoDB\Client(
      "mongodb+srv://priyadharshinis5102:senthamil@cluster0.gkno9yn.mongodb.net/?retryWrites=true&w=majority"
   );
-  //create database and table
+ 
   $db = $conn_mongoDB->GUVITask;
   $table = $db->users;
 
