@@ -56,4 +56,3 @@ $database = "authenticate";
 
 ?>
 
-<!-- mongodb://priyadharshinis5102:<password>@ac-ruwbmoe-shard-00-00.gkno9yn.mongodb.net:27017,ac-ruwbmoe-shard-00-01.gkno9yn.mongodb.net:27017,ac-ruwbmoe-shard-00-02.gkno9yn.mongodb.net:27017/?ssl=true&replicaSet=atlas-z3yf4b-shard-0&authSource=admin&retryWrites=true&w=majority -->
