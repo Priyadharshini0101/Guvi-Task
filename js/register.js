@@ -1,4 +1,4 @@
-var page = "./profile.html";
+var page = "./login.html";
 
 $("#form").submit(function (e) {    
       e.preventDefault();
@@ -21,7 +21,6 @@ $("#form").submit(function (e) {
             }else{
               alert("Registered Successfully");
               window.location.href = page;
-              localStorage.setItem("user",response);
             }
           },
                 
