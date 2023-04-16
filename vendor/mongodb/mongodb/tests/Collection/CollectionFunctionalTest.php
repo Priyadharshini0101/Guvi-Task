@@ -5,6 +5,7 @@ namespace MongoDB\Tests\Collection;
 use Closure;
 use MongoDB\BSON\Javascript;
 use MongoDB\Collection;
+use MongoDB\Database;
 use MongoDB\Driver\BulkWrite;
 use MongoDB\Driver\ReadConcern;
 use MongoDB\Driver\ReadPreference;
@@ -14,6 +15,7 @@ use MongoDB\Exception\UnsupportedException;
 use MongoDB\MapReduceResult;
 use MongoDB\Operation\Count;
 use MongoDB\Tests\CommandObserver;
+use TypeError;
 
 use function array_filter;
 use function call_user_func;
@@ -31,9 +33,9 @@ class CollectionFunctionalTest extends FunctionalTestCase
     /**
      * @dataProvider provideInvalidDatabaseAndCollectionNames
      */
-    public function testConstructorDatabaseNameArgument($databaseName): void
+    public function testConstructorDatabaseNameArgument($databaseName, string $expectedExceptionClass): void
     {
-        $this->expectException(InvalidArgumentException::class);
+        $this->expectException($expectedExceptionClass);
         // TODO: Move to unit test once ManagerInterface can be mocked (PHPC-378)
         new Collection($this->manager, $databaseName, $this->getCollectionName());
     }
@@ -41,9 +43,9 @@ class CollectionFunctionalTest extends FunctionalTestCase
     /**
      * @dataProvider provideInvalidDatabaseAndCollectionNames
      */
-    public function testConstructorCollectionNameArgument($collectionName): void
+    public function testConstructorCollectionNameArgument($collectionName, string $expectedExceptionClass): void
     {
-        $this->expectException(InvalidArgumentException::class);
+        $this->expectException($expectedExceptionClass);
         // TODO: Move to unit test once ManagerInterface can be mocked (PHPC-378)
         new Collection($this->manager, $this->getDatabaseName(), $collectionName);
     }
@@ -51,8 +53,8 @@ class CollectionFunctionalTest extends FunctionalTestCase
     public function provideInvalidDatabaseAndCollectionNames()
     {
         return [
-            [null],
-            [''],
+            [null, TypeError::class],
+            ['', InvalidArgumentException::class],
         ];
     }
 
@@ -146,10 +148,6 @@ class CollectionFunctionalTest extends FunctionalTestCase
 
     public function testCreateIndexSplitsCommandOptions(): void
     {
-        if (version_compare($this->getServerVersion(), '3.6.0', '<')) {
-            $this->markTestSkipped('Sessions are not supported');
-        }
-
         (new CommandObserver())->observe(
             function (): void {
                 $this->collection->createIndex(
@@ -263,7 +261,7 @@ class CollectionFunctionalTest extends FunctionalTestCase
 
         $commandResult = $this->collection->drop();
         $this->assertCommandSucceeded($commandResult);
-        $this->assertCollectionCount($this->getNamespace(), 0);
+        $this->assertCollectionDoesNotExist($this->getCollectionName());
     }
 
     /**
@@ -330,6 +328,53 @@ class CollectionFunctionalTest extends FunctionalTestCase
         } finally {
             $session->endSession();
         }
+    }
+
+    public function testRenameToSameDatabase(): void
+    {
+        $toCollectionName = $this->getCollectionName() . '.renamed';
+        $toCollection = new Collection($this->manager, $this->getDatabaseName(), $toCollectionName);
+
+        $writeResult = $this->collection->insertOne(['_id' => 1]);
+        $this->assertEquals(1, $writeResult->getInsertedCount());
+
+        $commandResult = $this->collection->rename($toCollectionName, null, ['dropTarget' => true]);
+        $this->assertCommandSucceeded($commandResult);
+        $this->assertCollectionDoesNotExist($this->getCollectionName());
+        $this->assertCollectionExists($toCollectionName);
+
+        $this->assertSameDocument(['_id' => 1], $toCollection->findOne());
+        $toCollection->drop();
+    }
+
+    public function testRenameToDifferentDatabase(): void
+    {
+        $toDatabaseName = $this->getDatabaseName() . '_renamed';
+        $toDatabase = new Database($this->manager, $toDatabaseName);
+
+        /* When renaming an unsharded collection, mongos requires the source
+        * and target database to both exist on the primary shard. In practice,
+        * this means we need to create the target database explicitly.
+        * See: https://mongodb.com/docs/manual/reference/command/renameCollection/#unsharded-collections
+        */
+        if ($this->isShardedCluster()) {
+            $toDatabase->foo->insertOne(['_id' => 1]);
+        }
+
+        $toCollectionName = $this->getCollectionName() . '.renamed';
+        $toCollection = new Collection($this->manager, $toDatabaseName, $toCollectionName);
+
+        $writeResult = $this->collection->insertOne(['_id' => 1]);
+        $this->assertEquals(1, $writeResult->getInsertedCount());
+
+        $commandResult = $this->collection->rename($toCollectionName, $toDatabaseName);
+        $this->assertCommandSucceeded($commandResult);
+        $this->assertCollectionDoesNotExist($this->getCollectionName());
+        $this->assertCollectionExists($toCollectionName, $toDatabaseName);
+
+        $this->assertSameDocument(['_id' => 1], $toCollection->findOne());
+
+        $toDatabase->drop();
     }
 
     public function testWithOptionsInheritsOptions(): void
@@ -761,9 +806,6 @@ class CollectionFunctionalTest extends FunctionalTestCase
 
     /**
      * Create data fixtures.
-     *
-     * @param integer $n
-     * @param array   $executeBulkWriteOptions
      */
     private function createFixtures(int $n, array $executeBulkWriteOptions = []): void
     {

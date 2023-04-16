@@ -1,12 +1,12 @@
 <?php
 /*
- * Copyright 2015-2017 MongoDB, Inc.
+ * Copyright 2015-present MongoDB, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ *   https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -32,18 +32,15 @@ use function array_key_exists;
  * @internal
  * @see \MongoDB\Collection::listIndexes()
  * @see https://github.com/mongodb/specifications/blob/master/source/enumerate-indexes.rst
- * @see http://docs.mongodb.org/manual/reference/command/listIndexes/
- * @see http://docs.mongodb.org/manual/reference/system-collections/
+ * @see https://mongodb.com/docs/manual/reference/command/listIndexes/
+ * @see https://mongodb.com/docs/manual/reference/system-collections/
  */
 class IndexInfoIteratorIterator extends IteratorIterator implements IndexInfoIterator
 {
     /** @var string|null $ns */
     private $ns;
 
-    /**
-     * @param string|null $ns
-     */
-    public function __construct(Traversable $iterator, $ns = null)
+    public function __construct(Traversable $iterator, ?string $ns = null)
     {
         parent::__construct($iterator);
 
@@ -54,10 +51,9 @@ class IndexInfoIteratorIterator extends IteratorIterator implements IndexInfoIte
      * Return the current element as an IndexInfo instance.
      *
      * @see IndexInfoIterator::current()
-     * @see http://php.net/iterator.current
-     * @return IndexInfo
+     * @see https://php.net/iterator.current
      */
-    public function current()
+    public function current(): IndexInfo
     {
         $info = parent::current();
 

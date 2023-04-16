@@ -3,7 +3,10 @@
 namespace MongoDB\Tests\Operation;
 
 use MongoDB\Driver\BulkWrite;
+use MongoDB\Driver\Exception\CommandException;
 use MongoDB\Driver\ReadPreference;
+use MongoDB\Driver\WriteConcern;
+use MongoDB\Exception\UnsupportedException;
 use MongoDB\Model\BSONDocument;
 use MongoDB\Operation\FindAndModify;
 use MongoDB\Tests\CommandObserver;
@@ -54,12 +57,63 @@ class FindAndModifyFunctionalTest extends FunctionalTestCase
         );
     }
 
-    public function testSessionOption(): void
+    public function testHintOptionUnsupportedClientSideError(): void
     {
-        if (version_compare($this->getServerVersion(), '3.6.0', '<')) {
-            $this->markTestSkipped('Sessions are not supported');
+        if (version_compare($this->getServerVersion(), '4.2.0', '>=')) {
+            $this->markTestSkipped('server reports error for unsupported findAndModify options');
         }
 
+        $operation = new FindAndModify(
+            $this->getDatabaseName(),
+            $this->getCollectionName(),
+            ['remove' => true, 'hint' => '_id_']
+        );
+
+        $this->expectException(UnsupportedException::class);
+        $this->expectExceptionMessage('Hint is not supported by the server executing this operation');
+
+        $operation->execute($this->getPrimaryServer());
+    }
+
+    public function testHintOptionAndUnacknowledgedWriteConcernUnsupportedClientSideError(): void
+    {
+        if (version_compare($this->getServerVersion(), '4.4.0', '>=')) {
+            $this->markTestSkipped('hint is supported');
+        }
+
+        $operation = new FindAndModify(
+            $this->getDatabaseName(),
+            $this->getCollectionName(),
+            ['remove' => true, 'hint' => '_id_', 'writeConcern' => new WriteConcern(0)]
+        );
+
+        $this->expectException(UnsupportedException::class);
+        $this->expectExceptionMessage('Hint is not supported by the server executing this operation');
+
+        $operation->execute($this->getPrimaryServer());
+    }
+
+    public function testFindAndModifyReportedWriteConcernError(): void
+    {
+        if (($this->isShardedCluster() && ! $this->isShardedClusterUsingReplicasets()) || ! $this->isReplicaSet()) {
+            $this->markTestSkipped('Test only applies to replica sets');
+        }
+
+        $this->expectException(CommandException::class);
+        $this->expectExceptionCode(100 /* UnsatisfiableWriteConcern */);
+        $this->expectExceptionMessageMatches('/Write Concern error:/');
+
+        $operation = new FindAndModify(
+            $this->getDatabaseName(),
+            $this->getCollectionName(),
+            ['remove' => true, 'writeConcern' => new WriteConcern(50)]
+        );
+
+        $operation->execute($this->getPrimaryServer());
+    }
+
+    public function testSessionOption(): void
+    {
         (new CommandObserver())->observe(
             function (): void {
                 $operation = new FindAndModify(
@@ -78,10 +132,6 @@ class FindAndModifyFunctionalTest extends FunctionalTestCase
 
     public function testBypassDocumentValidationSetWhenTrue(): void
     {
-        if (version_compare($this->getServerVersion(), '3.2.0', '<')) {
-            $this->markTestSkipped('bypassDocumentValidation is not supported');
-        }
-
         (new CommandObserver())->observe(
             function (): void {
                 $operation = new FindAndModify(
@@ -101,10 +151,6 @@ class FindAndModifyFunctionalTest extends FunctionalTestCase
 
     public function testBypassDocumentValidationUnsetWhenFalse(): void
     {
-        if (version_compare($this->getServerVersion(), '3.2.0', '<')) {
-            $this->markTestSkipped('bypassDocumentValidation is not supported');
-        }
-
         (new CommandObserver())->observe(
             function (): void {
                 $operation = new FindAndModify(
@@ -124,7 +170,7 @@ class FindAndModifyFunctionalTest extends FunctionalTestCase
     /**
      * @dataProvider provideTypeMapOptionsAndExpectedDocument
      */
-    public function testTypeMapOption(?array $typeMap = null, $expectedDocument): void
+    public function testTypeMapOption(?array $typeMap, $expectedDocument): void
     {
         $this->createFixtures(1);
 
@@ -173,8 +219,6 @@ class FindAndModifyFunctionalTest extends FunctionalTestCase
 
     /**
      * Create data fixtures.
-     *
-     * @param integer $n
      */
     private function createFixtures(int $n): void
     {

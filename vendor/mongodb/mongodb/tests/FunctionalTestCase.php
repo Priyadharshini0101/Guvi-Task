@@ -16,16 +16,21 @@ use MongoDB\Driver\WriteConcern;
 use MongoDB\Operation\CreateCollection;
 use MongoDB\Operation\DatabaseCommand;
 use MongoDB\Operation\DropCollection;
+use MongoDB\Operation\ListCollections;
 use stdClass;
 use UnexpectedValueException;
 
 use function array_merge;
+use function call_user_func;
 use function count;
 use function current;
 use function explode;
+use function filter_var;
 use function getenv;
 use function implode;
+use function in_array;
 use function is_array;
+use function is_callable;
 use function is_object;
 use function is_string;
 use function key;
@@ -39,6 +44,7 @@ use function preg_replace;
 use function sprintf;
 use function version_compare;
 
+use const FILTER_VALIDATE_BOOLEAN;
 use const INFO_MODULES;
 
 abstract class FunctionalTestCase extends TestCase
@@ -66,12 +72,20 @@ abstract class FunctionalTestCase extends TestCase
 
     public static function createTestClient(?string $uri = null, array $options = [], array $driverOptions = []): Client
     {
-        return new Client($uri ?? static::getUri(), $options, static::appendServerApiOption($driverOptions));
+        return new Client(
+            $uri ?? static::getUri(),
+            static::appendAuthenticationOptions($options),
+            static::appendServerApiOption($driverOptions)
+        );
     }
 
     public static function createTestManager(?string $uri = null, array $options = [], array $driverOptions = []): Manager
     {
-        return new Manager($uri ?? static::getUri(), $options, static::appendServerApiOption($driverOptions));
+        return new Manager(
+            $uri ?? static::getUri(),
+            static::appendAuthenticationOptions($options),
+            static::appendServerApiOption($driverOptions)
+        );
     }
 
     public static function getUri($allowMultipleMongoses = false): string
@@ -147,6 +161,71 @@ abstract class FunctionalTestCase extends TestCase
         $this->assertEquals($count, $document['n']);
     }
 
+    /**
+     * Asserts that a collection with the given name does not exist on the
+     * server.
+     *
+     * $databaseName defaults to TestCase::getDatabaseName() if unspecified.
+     */
+    protected function assertCollectionDoesNotExist(string $collectionName, ?string $databaseName = null): void
+    {
+        if (! isset($databaseName)) {
+            $databaseName = $this->getDatabaseName();
+        }
+
+        $operation = new ListCollections($this->getDatabaseName());
+        $collections = $operation->execute($this->getPrimaryServer());
+
+        $foundCollection = null;
+
+        foreach ($collections as $collection) {
+            if ($collection->getName() === $collectionName) {
+                $foundCollection = $collection;
+                break;
+            }
+        }
+
+        $this->assertNull($foundCollection, sprintf('Collection %s exists', $collectionName));
+    }
+
+    /**
+     * Asserts that a collection with the given name exists on the server.
+     *
+     * $databaseName defaults to TestCase::getDatabaseName() if unspecified.
+     * An optional $callback may be provided, which should take a CollectionInfo
+     * argument as its first and only parameter. If a CollectionInfo matching
+     * the given name is found, it will be passed to the callback, which may
+     * perform additional assertions.
+     */
+    protected function assertCollectionExists(string $collectionName, ?string $databaseName = null, ?callable $callback = null): void
+    {
+        if (! isset($databaseName)) {
+            $databaseName = $this->getDatabaseName();
+        }
+
+        if ($callback !== null && ! is_callable($callback)) {
+            throw new InvalidArgumentException('$callback is not a callable');
+        }
+
+        $operation = new ListCollections($databaseName);
+        $collections = $operation->execute($this->getPrimaryServer());
+
+        $foundCollection = null;
+
+        foreach ($collections as $collection) {
+            if ($collection->getName() === $collectionName) {
+                $foundCollection = $collection;
+                break;
+            }
+        }
+
+        $this->assertNotNull($foundCollection, sprintf('Found %s collection in the database', $collectionName));
+
+        if ($callback !== null) {
+            call_user_func($callback, $foundCollection);
+        }
+    }
+
     protected function assertCommandSucceeded($document): void
     {
         $document = is_object($document) ? (array) $document : $document;
@@ -189,7 +268,7 @@ abstract class FunctionalTestCase extends TestCase
             throw new InvalidArgumentException('$command is not an array or stdClass instance');
         }
 
-        if (key($command) !== 'configureFailPoint') {
+        if (key((array) $command) !== 'configureFailPoint') {
             throw new InvalidArgumentException('$command is not a configureFailPoint command');
         }
 
@@ -205,20 +284,31 @@ abstract class FunctionalTestCase extends TestCase
         $this->configuredFailPoints[] = [$command->configureFailPoint, $failPointServer];
     }
 
+    public static function getModuleInfo(string $row): ?string
+    {
+        ob_start();
+        phpinfo(INFO_MODULES);
+        $info = ob_get_clean();
+
+        $pattern = sprintf('/^%s(.*)$/m', preg_quote($row . ' => '));
+
+        if (preg_match($pattern, $info, $matches) !== 1) {
+            return null;
+        }
+
+        return $matches[1];
+    }
+
     /**
      * Creates the test collection with the specified options.
      *
      * If the "writeConcern" option is not specified but is supported by the
      * server, a majority write concern will be used. This is helpful for tests
      * using transactions or secondary reads.
-     *
-     * @param array $options
      */
     protected function createCollection(array $options = []): void
     {
-        if (version_compare($this->getServerVersion(), '3.4.0', '>=')) {
-            $options += ['writeConcern' => new WriteConcern(WriteConcern::MAJORITY)];
-        }
+        $options += ['writeConcern' => new WriteConcern(WriteConcern::MAJORITY)];
 
         $operation = new CreateCollection($this->getDatabaseName(), $this->getCollectionName(), $options);
         $operation->execute($this->getPrimaryServer());
@@ -230,14 +320,10 @@ abstract class FunctionalTestCase extends TestCase
      * If the "writeConcern" option is not specified but is supported by the
      * server, a majority write concern will be used. This is helpful for tests
      * using transactions or secondary reads.
-     *
-     * @param array $options
      */
     protected function dropCollection(array $options = []): void
     {
-        if (version_compare($this->getServerVersion(), '3.4.0', '>=')) {
-            $options += ['writeConcern' => new WriteConcern(WriteConcern::MAJORITY)];
-        }
+        $options += ['writeConcern' => new WriteConcern(WriteConcern::MAJORITY)];
 
         $operation = new DropCollection($this->getDatabaseName(), $this->getCollectionName(), $options);
         $operation->execute($this->getPrimaryServer());
@@ -246,10 +332,6 @@ abstract class FunctionalTestCase extends TestCase
     protected function getFeatureCompatibilityVersion(?ReadPreference $readPreference = null)
     {
         if ($this->isShardedCluster()) {
-            return $this->getServerVersion($readPreference);
-        }
-
-        if (version_compare($this->getServerVersion(), '3.4.0', '<')) {
             return $this->getServerVersion($readPreference);
         }
 
@@ -262,14 +344,8 @@ abstract class FunctionalTestCase extends TestCase
         $cursor->setTypeMap(['root' => 'array', 'document' => 'array']);
         $document = current($cursor->toArray());
 
-        // MongoDB 3.6: featureCompatibilityVersion is an embedded document
         if (isset($document['featureCompatibilityVersion']['version']) && is_string($document['featureCompatibilityVersion']['version'])) {
             return $document['featureCompatibilityVersion']['version'];
-        }
-
-        // MongoDB 3.4: featureCompatibilityVersion is a string
-        if (isset($document['featureCompatibilityVersion']) && is_string($document['featureCompatibilityVersion'])) {
-            return $document['featureCompatibilityVersion'];
         }
 
         throw new UnexpectedValueException('Could not determine featureCompatibilityVersion');
@@ -312,18 +388,73 @@ abstract class FunctionalTestCase extends TestCase
         throw new UnexpectedValueException('Could not determine server storage engine');
     }
 
+    protected function isEnterprise(): bool
+    {
+        $buildInfo = $this->getPrimaryServer()->executeCommand(
+            $this->getDatabaseName(),
+            new Command(['buildInfo' => 1])
+        )->toArray()[0];
+
+        if (isset($buildInfo->modules) && is_array($buildInfo->modules)) {
+            return in_array('enterprise', $buildInfo->modules);
+        }
+
+        throw new UnexpectedValueException('Could not determine server modules');
+    }
+
+    protected function isLoadBalanced()
+    {
+        return $this->getPrimaryServer()->getType() == Server::TYPE_LOAD_BALANCER;
+    }
+
     protected function isReplicaSet()
     {
         return $this->getPrimaryServer()->getType() == Server::TYPE_RS_PRIMARY;
     }
 
-    protected function isShardedCluster()
+    protected function isMongos()
     {
         return $this->getPrimaryServer()->getType() == Server::TYPE_MONGOS;
     }
 
+    protected function isStandalone()
+    {
+        return $this->getPrimaryServer()->getType() == Server::TYPE_STANDALONE;
+    }
+
+    /**
+     * Return whether serverless (i.e. proxy as mongos) is being utilized.
+     */
+    protected static function isServerless(): bool
+    {
+        $isServerless = getenv('MONGODB_IS_SERVERLESS');
+
+        return $isServerless !== false ? filter_var($isServerless, FILTER_VALIDATE_BOOLEAN) : false;
+    }
+
+    protected function isShardedCluster()
+    {
+        $type = $this->getPrimaryServer()->getType();
+
+        if ($type == Server::TYPE_MONGOS) {
+            return true;
+        }
+
+        // Assume that load balancers are properly configured and front sharded clusters
+        if ($type == Server::TYPE_LOAD_BALANCER) {
+            return true;
+        }
+
+        return false;
+    }
+
     protected function isShardedClusterUsingReplicasets()
     {
+        // Assume serverless is a sharded cluster using replica sets
+        if (static::isServerless()) {
+            return true;
+        }
+
         $cursor = $this->getPrimaryServer()->executeQuery(
             'config.shards',
             new Query([], ['limit' => 1])
@@ -348,10 +479,7 @@ abstract class FunctionalTestCase extends TestCase
     {
         switch ($this->getPrimaryServer()->getType()) {
             case Server::TYPE_MONGOS:
-                if (version_compare($this->getServerVersion(), '3.6.0', '<')) {
-                    $this->markTestSkipped('$changeStream is only supported on MongoDB 3.6 or higher');
-                }
-
+            case Server::TYPE_LOAD_BALANCER:
                 if (! $this->isShardedClusterUsingReplicasets()) {
                     $this->markTestSkipped('$changeStream is only supported with replicasets');
                 }
@@ -359,10 +487,6 @@ abstract class FunctionalTestCase extends TestCase
                 break;
 
             case Server::TYPE_RS_PRIMARY:
-                if (version_compare($this->getFeatureCompatibilityVersion(), '3.6', '<')) {
-                    $this->markTestSkipped('$changeStream is only supported on FCV 3.6 or higher');
-                }
-
                 break;
 
             default:
@@ -374,10 +498,7 @@ abstract class FunctionalTestCase extends TestCase
     {
         switch ($this->getPrimaryServer()->getType()) {
             case Server::TYPE_MONGOS:
-                if (version_compare($this->getServerVersion(), '3.6.0', '<')) {
-                    $this->markTestSkipped('Causal Consistency is only supported on MongoDB 3.6 or higher');
-                }
-
+            case Server::TYPE_LOAD_BALANCER:
                 if (! $this->isShardedClusterUsingReplicasets()) {
                     $this->markTestSkipped('Causal Consistency is only supported with replicasets');
                 }
@@ -385,10 +506,6 @@ abstract class FunctionalTestCase extends TestCase
                 break;
 
             case Server::TYPE_RS_PRIMARY:
-                if (version_compare($this->getFeatureCompatibilityVersion(), '3.6', '<')) {
-                    $this->markTestSkipped('Causal Consistency is only supported on FCV 3.6 or higher');
-                }
-
                 if ($this->getServerStorageEngine() !== 'wiredTiger') {
                     $this->markTestSkipped('Causal Consistency requires WiredTiger storage engine');
                 }
@@ -406,7 +523,7 @@ abstract class FunctionalTestCase extends TestCase
             $this->markTestSkipped('Client Side Encryption only supported on FCV 4.2 or higher');
         }
 
-        if ($this->getModuleInfo('libmongocrypt') === 'disabled') {
+        if (static::getModuleInfo('libmongocrypt') === 'disabled') {
             $this->markTestSkipped('Client Side Encryption is not enabled in the MongoDB extension');
         }
     }
@@ -445,6 +562,26 @@ abstract class FunctionalTestCase extends TestCase
         }
     }
 
+    private static function appendAuthenticationOptions(array $options): array
+    {
+        if (isset($options['username']) || isset($options['password'])) {
+            return $options;
+        }
+
+        $username = getenv('MONGODB_USERNAME') ?: null;
+        $password = getenv('MONGODB_PASSWORD') ?: null;
+
+        if ($username !== null) {
+            $options['username'] = $username;
+        }
+
+        if ($password !== null) {
+            $options['password'] = $password;
+        }
+
+        return $options;
+    }
+
     private static function appendServerApiOption(array $driverOptions): array
     {
         if (getenv('API_VERSION') && ! isset($driverOptions['serverApi'])) {
@@ -472,25 +609,8 @@ abstract class FunctionalTestCase extends TestCase
         }
     }
 
-    private function getModuleInfo(string $row): ?string
-    {
-        ob_start();
-        phpinfo(INFO_MODULES);
-        $info = ob_get_clean();
-
-        $pattern = sprintf('/^%s([\w ]+)$/m', preg_quote($row . ' => '));
-
-        if (preg_match($pattern, $info, $matches) !== 1) {
-            return null;
-        }
-
-        return $matches[1];
-    }
-
     /**
      * Checks if the failCommand command is supported on this server version
-     *
-     * @return bool
      */
     private function isFailCommandSupported(): bool
     {
@@ -501,8 +621,6 @@ abstract class FunctionalTestCase extends TestCase
 
     /**
      * Checks if the failCommand command is enabled by checking the enableTestCommands parameter
-     *
-     * @return bool
      */
     private function isFailCommandEnabled(): bool
     {

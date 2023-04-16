@@ -4,11 +4,7 @@ namespace MongoDB\Tests\Operation;
 
 use MongoDB\Operation\DropCollection;
 use MongoDB\Operation\InsertOne;
-use MongoDB\Operation\ListCollections;
 use MongoDB\Tests\CommandObserver;
-
-use function sprintf;
-use function version_compare;
 
 class DropCollectionFunctionalTest extends FunctionalTestCase
 {
@@ -62,10 +58,6 @@ class DropCollectionFunctionalTest extends FunctionalTestCase
 
     public function testSessionOption(): void
     {
-        if (version_compare($this->getServerVersion(), '3.6.0', '<')) {
-            $this->markTestSkipped('Sessions are not supported');
-        }
-
         (new CommandObserver())->observe(
             function (): void {
                 $operation = new DropCollection(
@@ -80,28 +72,5 @@ class DropCollectionFunctionalTest extends FunctionalTestCase
                 $this->assertObjectHasAttribute('lsid', $event['started']->getCommand());
             }
         );
-    }
-
-    /**
-     * Asserts that a collection with the given name does not exist on the
-     * server.
-     *
-     * @param string $collectionName
-     */
-    private function assertCollectionDoesNotExist(string $collectionName): void
-    {
-        $operation = new ListCollections($this->getDatabaseName());
-        $collections = $operation->execute($this->getPrimaryServer());
-
-        $foundCollection = null;
-
-        foreach ($collections as $collection) {
-            if ($collection->getName() === $collectionName) {
-                $foundCollection = $collection;
-                break;
-            }
-        }
-
-        $this->assertNull($foundCollection, sprintf('Collection %s exists', $collectionName));
     }
 }

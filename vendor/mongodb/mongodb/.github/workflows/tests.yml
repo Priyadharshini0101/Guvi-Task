@@ -5,10 +5,12 @@ on:
     branches:
       - "v*.*"
       - "master"
+      - "feature/*"
   push:
     branches:
       - "v*.*"
       - "master"
+      - "feature/*"
 
 jobs:
   phpunit:
@@ -23,6 +25,8 @@ jobs:
         php-version:
           - "7.4"
           - "8.0"
+          - "8.1"
+          - "8.2"
         mongodb-version:
           - "4.4"
         driver-version:
@@ -30,6 +34,16 @@ jobs:
         topology:
           - "server"
         include:
+          - os: "ubuntu-20.04"
+            php-version: "8.0"
+            mongodb-version: "6.0"
+            driver-version: "mongodb/mongo-php-driver@master"
+            topology: "replica_set"
+          - os: "ubuntu-20.04"
+            php-version: "8.0"
+            mongodb-version: "6.0"
+            driver-version: "mongodb/mongo-php-driver@master"
+            topology: "sharded_cluster"
           - os: "ubuntu-20.04"
             php-version: "8.0"
             mongodb-version: "5.0"
@@ -74,8 +88,7 @@ jobs:
           restore-keys: ${{ steps.extcache.outputs.key }}
 
       - name: "Install PHP"
-        # Todo: switch to @v2 once a tag has been created
-        uses: "shivammathur/setup-php@develop"
+        uses: "shivammathur/setup-php@v2"
         with:
           php-version: "${{ matrix.php-version }}"
           tools: "pecl"
@@ -101,10 +114,3 @@ jobs:
         env:
           SYMFONY_DEPRECATIONS_HELPER: 999999
           MONGODB_URI: ${{ steps.setup-mongodb.outputs.cluster-uri }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          GCP_EMAIL: ${{ secrets.GCP_EMAIL }}
-          GCP_PRIVATE_KEY: ${{ secrets.GCP_PRIVATE_KEY }}

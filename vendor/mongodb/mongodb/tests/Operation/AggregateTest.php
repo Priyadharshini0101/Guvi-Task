@@ -27,7 +27,7 @@ class AggregateTest extends TestCase
     {
         $options = [];
 
-        foreach ($this->getInvalidBooleanValues(true) as $value) {
+        foreach ($this->getInvalidBooleanValues() as $value) {
             $options[][] = ['allowDiskUse' => $value];
         }
 
@@ -41,10 +41,6 @@ class AggregateTest extends TestCase
 
         foreach ($this->getInvalidDocumentValues() as $value) {
             $options[][] = ['collation' => $value];
-        }
-
-        foreach ($this->getInvalidStringValues() as $value) {
-            $options[][] = ['comment' => $value];
         }
 
         foreach ($this->getInvalidHintValues() as $value) {

@@ -29,6 +29,11 @@ class FunctionalTestCase extends BaseFunctionalTestCase
     public const TOPOLOGY_SINGLE = 'single';
     public const TOPOLOGY_REPLICASET = 'replicaset';
     public const TOPOLOGY_SHARDED = 'sharded';
+    public const TOPOLOGY_LOAD_BALANCED = 'load-balanced';
+
+    public const SERVERLESS_ALLOW = 'allow';
+    public const SERVERLESS_FORBID = 'forbid';
+    public const SERVERLESS_REQUIRE = 'require';
 
     /** @var Context|null */
     private $context;
@@ -82,9 +87,8 @@ class FunctionalTestCase extends BaseFunctionalTestCase
      *
      * @param array|object $expectedDocument
      * @param array|object $actualDocument
-     * @param string       $message
      */
-    protected static function assertDocumentsMatch($expectedDocument, $actualDocument, string $message = ''): void
+    public static function assertDocumentsMatch($expectedDocument, $actualDocument, string $message = ''): void
     {
         $constraint = new DocumentsMatchConstraint($expectedDocument, true, true);
 
@@ -93,9 +97,6 @@ class FunctionalTestCase extends BaseFunctionalTestCase
 
     /**
      * Assert data within the outcome collection.
-     *
-     * @param array $expectedDocuments
-     * @param int   $resultExpectation
      */
     protected function assertOutcomeCollectionData(array $expectedDocuments, int $resultExpectation = ResultExpectation::ASSERT_SAME_DOCUMENT): void
     {
@@ -128,7 +129,6 @@ class FunctionalTestCase extends BaseFunctionalTestCase
     /**
      * Checks server version and topology requirements.
      *
-     * @param array $runOn
      * @throws SkippedTest if the server requirements are not met
      */
     protected function checkServerRequirements(array $runOn): void
@@ -137,8 +137,9 @@ class FunctionalTestCase extends BaseFunctionalTestCase
             $minServerVersion = $req->minServerVersion ?? null;
             $maxServerVersion = $req->maxServerVersion ?? null;
             $topologies = $req->topology ?? null;
+            $serverlessMode = $req->serverless ?? null;
 
-            if ($this->isServerRequirementSatisifed($minServerVersion, $maxServerVersion, $topologies)) {
+            if ($this->isServerRequirementSatisifed($minServerVersion, $maxServerVersion, $topologies, $serverlessMode)) {
                 return;
             }
         }
@@ -155,7 +156,6 @@ class FunctionalTestCase extends BaseFunctionalTestCase
      * This decodes the file through the driver's extended JSON parser to ensure
      * proper handling of special types.
      *
-     * @param string $json
      * @return array|object
      */
     protected function decodeJson(string $json)
@@ -166,7 +166,6 @@ class FunctionalTestCase extends BaseFunctionalTestCase
     /**
      * Return the test context.
      *
-     * @return Context
      * @throws LogicException if the context has not been set
      */
     protected function getContext(): Context
@@ -180,8 +179,6 @@ class FunctionalTestCase extends BaseFunctionalTestCase
 
     /**
      * Set the test context.
-     *
-     * @param Context $context
      */
     protected function setContext(Context $context): void
     {
@@ -191,7 +188,7 @@ class FunctionalTestCase extends BaseFunctionalTestCase
     /**
      * Drop the test and outcome collections by dropping them.
      */
-    protected function dropTestAndOutcomeCollections(): void
+    protected function dropTestAndOutcomeCollections(array $testCollectionDropOptions = []): void
     {
         $context = $this->getContext();
 
@@ -207,7 +204,7 @@ class FunctionalTestCase extends BaseFunctionalTestCase
         $collection = null;
         if ($context->collectionName !== null) {
             $collection = $context->getCollection($context->defaultWriteOptions);
-            $collection->drop();
+            $collection->drop($testCollectionDropOptions);
         }
 
         if ($context->outcomeCollectionName !== null) {
@@ -222,9 +219,6 @@ class FunctionalTestCase extends BaseFunctionalTestCase
 
     /**
      * Insert data fixtures into the test collection.
-     *
-     * @param array       $documents
-     * @param string|null $collectionName
      */
     protected function insertDataFixtures(array $documents, ?string $collectionName = null): void
     {
@@ -251,7 +245,6 @@ class FunctionalTestCase extends BaseFunctionalTestCase
     /**
      * Return the corresponding topology constants for the current topology.
      *
-     * @return string
      * @throws UnexpectedValueException if topology is neither single nor RS nor sharded
      */
     private function getTopology(): string
@@ -260,6 +253,7 @@ class FunctionalTestCase extends BaseFunctionalTestCase
             Server::TYPE_STANDALONE => self::TOPOLOGY_SINGLE,
             Server::TYPE_RS_PRIMARY => self::TOPOLOGY_REPLICASET,
             Server::TYPE_MONGOS => self::TOPOLOGY_SHARDED,
+            Server::TYPE_LOAD_BALANCER => self::TOPOLOGY_LOAD_BALANCED,
         ];
 
         $primaryType = $this->getPrimaryServer()->getType();
@@ -268,18 +262,33 @@ class FunctionalTestCase extends BaseFunctionalTestCase
             return $topologyTypeMap[$primaryType];
         }
 
-        throw new UnexpectedValueException('Toplogy is neither single nor RS nor sharded');
+        throw new UnexpectedValueException(sprintf('Cannot find topology for primary of type "%d".', $primaryType));
+    }
+
+    private function isServerlessRequirementSatisfied(?string $serverlessMode): bool
+    {
+        if ($serverlessMode === null) {
+            return true;
+        }
+
+        switch ($serverlessMode) {
+            case self::SERVERLESS_ALLOW:
+                return true;
+
+            case self::SERVERLESS_FORBID:
+                return ! static::isServerless();
+
+            case self::SERVERLESS_REQUIRE:
+                return static::isServerless();
+        }
+
+        throw new UnexpectedValueException(sprintf('Invalid serverless requirement "%s" found.', $serverlessMode));
     }
 
     /**
      * Checks if server version and topology requirements are satifised.
-     *
-     * @param string|null $minServerVersion
-     * @param string|null $maxServerVersion
-     * @param array|null  $topologies
-     * @return boolean
      */
-    private function isServerRequirementSatisifed(?string $minServerVersion, ?string $maxServerVersion, ?array $topologies = null): bool
+    private function isServerRequirementSatisifed(?string $minServerVersion, ?string $maxServerVersion, ?array $topologies = null, ?string $serverlessMode = null): bool
     {
         $serverVersion = $this->getServerVersion();
 
@@ -294,6 +303,10 @@ class FunctionalTestCase extends BaseFunctionalTestCase
         $topology = $this->getTopology();
 
         if (isset($topologies) && ! in_array($topology, $topologies)) {
+            return false;
+        }
+
+        if (! $this->isServerlessRequirementSatisfied($serverlessMode)) {
             return false;
         }
 

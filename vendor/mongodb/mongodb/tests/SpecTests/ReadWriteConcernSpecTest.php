@@ -45,7 +45,7 @@ class ReadWriteConcernSpecTest extends FunctionalTestCase
      * @param string   $databaseName   Name of database under test
      * @param string   $collectionName Name of collection under test
      */
-    public function testReadWriteConcern(stdClass $test, ?array $runOn = null, array $data, ?string $databaseName = null, ?string $collectionName = null): void
+    public function testReadWriteConcern(stdClass $test, ?array $runOn, array $data, ?string $databaseName = null, ?string $collectionName = null): void
     {
         if (isset(self::$incompleteTests[$this->dataDescription()])) {
             $this->markTestIncomplete(self::$incompleteTests[$this->dataDescription()]);
@@ -73,7 +73,7 @@ class ReadWriteConcernSpecTest extends FunctionalTestCase
         }
 
         if (isset($test->expectations)) {
-            $commandExpectations = CommandExpectations::fromReadWriteConcern($test->expectations);
+            $commandExpectations = CommandExpectations::fromReadWriteConcern($context->getClient(), $test->expectations);
             $commandExpectations->startMonitoring();
         }
 

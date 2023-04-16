@@ -122,7 +122,7 @@ class CachingIteratorTest extends TestCase
             /** @var int */
             private $i = 0;
 
-            public function current()
+            public function current(): int
             {
                 return $this->i;
             }
@@ -132,12 +132,12 @@ class CachingIteratorTest extends TestCase
                 $this->i++;
             }
 
-            public function key()
+            public function key(): int
             {
                 return $this->i;
             }
 
-            public function valid()
+            public function valid(): bool
             {
                 return $this->i == 0;
             }
@@ -152,6 +152,26 @@ class CachingIteratorTest extends TestCase
         $this->assertCount(1, $iterator);
     }
 
+    public function testCountNonUniqueKeys(): void
+    {
+        $iterator = new CachingIterator($this->getNonUniqueTraversable([1, 2, 3]));
+        $this->assertCount(3, $iterator);
+    }
+
+    public function testIterationNonUniqueKeys(): void
+    {
+        $iterator = new CachingIterator($this->getNonUniqueTraversable([1, 2, 3]));
+
+        $expectedItem = 1;
+
+        foreach ($iterator as $key => $item) {
+            $this->assertSame(0, $key);
+            $this->assertSame($expectedItem++, $item);
+        }
+
+        $this->assertFalse($iterator->valid());
+    }
+
     private function getTraversable($items)
     {
         foreach ($items as $item) {
@@ -159,6 +179,17 @@ class CachingIteratorTest extends TestCase
                 throw $item;
             } else {
                 yield $item;
+            }
+        }
+    }
+
+    private function getNonUniqueTraversable($items)
+    {
+        foreach ($items as $item) {
+            if ($item instanceof Exception) {
+                throw $item;
+            } else {
+                yield 0 => $item;
             }
         }
     }
