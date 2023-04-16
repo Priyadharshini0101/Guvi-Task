@@ -14,13 +14,13 @@ $database = "authenticate";
   $email = $_POST["email"];
   $password = $_POST["password"];
 
-  $stmt = $conn->prepare("SELECT * FROM auth WHERE email = ?");
+  $stmt = $conn->prepare("SELECT * FROM users WHERE email = ?");
   $stmt->bind_param("s", $email);
   $stmt->execute();
   $stmt->store_result();
 
   require_once dirname(__DIR__, 1) . "/vendor/autoload.php";
-  
+
   $mongoDB = new MongoDB\Client(
      "mongodb+srv://priyadharshinis5102:senthamil@cluster0.gkno9yn.mongodb.net/?retryWrites=true&w=majority"
   );
@@ -39,7 +39,7 @@ $database = "authenticate";
   if($stmt->num_rows > 0){
     $response = "invalid credentials";
   }else{
-        $stmt1 = $conn->prepare("INSERT INTO auth (username, email, password) VALUES (?, ?, ?)");
+        $stmt1 = $conn->prepare("INSERT INTO users (username, email, password) VALUES (?, ?, ?)");
         $stmt1->bind_param("sss", $username, $email, $password);
         $stmt1-> execute();
         $stmt1-> close();
