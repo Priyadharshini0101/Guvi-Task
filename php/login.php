@@ -14,7 +14,7 @@ $database = "authenticate";
   $email = $_POST["email"];
   $password = $_POST["password"];
 
-  $stmt = $conn->prepare("SELECT * FROM auth WHERE email = ? && password = ?");
+  $stmt = $conn->prepare("SELECT * FROM users WHERE email = ? && password = ?");
   $stmt->bind_param("ss", $email, $password);
   $stmt->execute();
   $stmt->store_result();

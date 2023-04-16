@@ -9,7 +9,8 @@
 </head>
 <body>
   <section class="vh-100" style="background-color: #eee;">
-    <img src="/assets/logout.svg" style="width: 32px; margin-left: 24px; margin-top: 24px;" onclick="logout()">
+    <img src="/assets/logout.svg" style="width: 36px; margin-left: 24px; margin-top: 24px;" onclick="logout()">
+    <img src="/assets/delete.svg" style="width: 32px; margin-left: 24px; margin-top: 24px;" onclick="deleteUser()">
     <div class="container py-5 h-100">
       <div class="row d-flex justify-content-center align-items-center h-100">
 
@@ -22,33 +23,31 @@
                 <img src="https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava2-bg.webp"
                   class="rounded-circle img-fluid" style="width: 100px;" />
               </div>
-              <h4 class="mb-2 text-center">Priyadharshini S</h4>
-              <p class="text-muted mb-4 text-center">priya@gmail.com </p>
+              <h4 class="mb-2 text-center" id="username_1"></h4>
+              <p class="text-muted mb-4 text-center" id="email_1"> </p>
               <div class="card-title text-primary">
                 <h6>Edit profile</h6>
               </div>
-              <form>
-                <div class="form-group">
+              <form  autocomplete="off" id="form">
+                <div>
                   <label for="username"> Username </label>
                   <input type="username" class="form-control form-control-sm" id="username"
-                    aria-describedby="usernameHelp" value="Priyadharshini S">
+                    aria-describedby="usernameHelp">
                 </div>
                 <div class="form-group">
                   <label for="exampleInputEmail1">Email address </label>
-                  <input type="email" class="form-control form-control-sm" id="email" aria-describedby="emailHelp"
-                    value="priya@gmail.com">
+                  <input type="email" class="form-control form-control-sm" id="email" aria-describedby="emailHelp" readonly="true">
                 </div>
                 <div class="form-group">
                   <label for="exampleInputDOB1"> Date of Birth </label>
-                  <input type="date" class="form-control form-control-sm" id="dob" aria-describedby="dobHelp"
-                    value="2002-01-05">
+                  <input type="date" class="form-control form-control-sm" id="dob" aria-describedby="dobHelp">
                 </div>
                 <div class="form-group">
                   <label for="exampleInputPhoneNumber1"> Phone Number </label>
                   <input type="tel" class="form-control form-control-sm" id="phonenumber"
-                    aria-describedby="phonenumberHelp" value="8342424275">
+                    aria-describedby="phonenumberHelp">
                 </div>
-                <button type="submit" class="btn btn-primary btn-block"> Save Changes </button>
+                <button type="submit" id="submit" class="btn btn-primary btn-block"> Save Changes </button>
               </form>
             </div>
           </div>
@@ -56,7 +55,7 @@
       </div>
     </div>
     </div>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script> 
     <script type="text/javascript" src="./js/profile.js"></script>
 </body>
 
