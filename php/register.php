@@ -20,21 +20,21 @@ $database = "authenticate";
   $stmt->store_result();
 
   require_once dirname(__DIR__, 1) . "/vendor/autoload.php";
-  $conn_mongoDB = new MongoDB\Client(
+  
+  $mongoDB = new MongoDB\Client(
      "mongodb+srv://priyadharshinis5102:senthamil@cluster0.gkno9yn.mongodb.net/?retryWrites=true&w=majority"
   );
  
-  $db = $conn_mongoDB->GUVITask;
+  $db = $mongoDB-> GUVIDB;
   $table = $db->users;
 
   $document = [
-      "name" => $_POST["name"],
+      "name" => $_POST["username"],
       "email" => $_POST["email"],
+      "password" => $_POST["password"],
       "dob" => $_POST["dob"],
-      "address" => $_POST["address"],
+      "phonenumber" => $_POST["address"],
   ];
-
-  
 
   if($stmt->num_rows > 0){
     $response = "invalid credentials";
