@@ -19,6 +19,23 @@ $database = "authenticate";
   $stmt->execute();
   $stmt->store_result();
 
+  require_once dirname(__DIR__, 1) . "/vendor/autoload.php";
+  $conn_mongoDB = new MongoDB\Client(
+     "mongodb+srv://priyadharshinis5102:senthamil@cluster0.gkno9yn.mongodb.net/?retryWrites=true&w=majority"
+  );
+  //create database and table
+  $db = $conn_mongoDB->GUVITask;
+  $table = $db->users;
+
+  $document = [
+      "name" => $_POST["name"],
+      "email" => $_POST["email"],
+      "dob" => $_POST["dob"],
+      "address" => $_POST["address"],
+  ];
+
+  
+
   if($stmt->num_rows > 0){
     $response = "invalid credentials";
   }else{
@@ -27,12 +44,16 @@ $database = "authenticate";
         $stmt1-> execute();
         $stmt1-> close();
         $response = $email;
+      $table->insertOne($document);
   }
 
   echo $response;
   $stmt->close();
   $conn->close();
 
+ 
 
 
 ?>
+
+<!-- mongodb://priyadharshinis5102:<password>@ac-ruwbmoe-shard-00-00.gkno9yn.mongodb.net:27017,ac-ruwbmoe-shard-00-01.gkno9yn.mongodb.net:27017,ac-ruwbmoe-shard-00-02.gkno9yn.mongodb.net:27017/?ssl=true&replicaSet=atlas-z3yf4b-shard-0&authSource=admin&retryWrites=true&w=majority -->
