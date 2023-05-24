@@ -64,7 +64,7 @@ let email = document.getElementById("email").value;
 let dob = document.getElementById("dob").value;
 let phonenumber = document.getElementById("phonenumber").value;
       $.ajax({
-        url: "./php/profile.php?user= " + user,
+        url: "./php/profile.php?",
         method: "POST",
         data: {username:username,email:email,dob:dob,phonenumber:phonenumber},
 

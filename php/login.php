@@ -21,7 +21,29 @@ $database = "authenticate";
 
 
   if($stmt->num_rows > 0){
-    $response = $email;
+    try{
+    require_once dirname(__DIR__, 1) . "/vendor/predis/predis/autoload.php";
+    Predis\Autoloader::register();
+    $redis = new Predis\Client([
+        "scheme" => "tcp",
+        "host" => "127.0.0.1:6379",
+        "port" => 6379,
+    ]);
+
+    if (!$redis->ping()) {
+      echo "Connection failed";
+  }
+
+  $id = password_hash($email, PASSWORD_DEFAULT);
+  $redis->set($id, $email);
+
+  $response = $id;
+  }catch (Exception $e) {
+    die($e->getMessage());
+}
+  
+
+   
   }else{
     $response = "invalid credentials";
   }
