@@ -152,6 +152,10 @@ class MapReduceFunctionalTest extends FunctionalTestCase
 
     public function testSessionOption(): void
     {
+        if (version_compare($this->getServerVersion(), '3.6.0', '<')) {
+            $this->markTestSkipped('Sessions are not supported');
+        }
+
         $this->createFixtures(3);
 
         (new CommandObserver())->observe(
@@ -175,6 +179,10 @@ class MapReduceFunctionalTest extends FunctionalTestCase
 
     public function testBypassDocumentValidationSetWhenTrue(): void
     {
+        if (version_compare($this->getServerVersion(), '3.2.0', '<')) {
+            $this->markTestSkipped('bypassDocumentValidation is not supported');
+        }
+
         $this->createFixtures(1);
 
         (new CommandObserver())->observe(
@@ -199,6 +207,10 @@ class MapReduceFunctionalTest extends FunctionalTestCase
 
     public function testBypassDocumentValidationUnsetWhenFalse(): void
     {
+        if (version_compare($this->getServerVersion(), '3.2.0', '<')) {
+            $this->markTestSkipped('bypassDocumentValidation is not supported');
+        }
+
         $this->createFixtures(1);
 
         (new CommandObserver())->observe(
@@ -223,7 +235,7 @@ class MapReduceFunctionalTest extends FunctionalTestCase
     /**
      * @dataProvider provideTypeMapOptionsAndExpectedDocuments
      */
-    public function testTypeMapOptionWithInlineResults(?array $typeMap, array $expectedDocuments): void
+    public function testTypeMapOptionWithInlineResults(?array $typeMap = null, array $expectedDocuments): void
     {
         $this->createFixtures(3);
 
@@ -270,7 +282,7 @@ class MapReduceFunctionalTest extends FunctionalTestCase
     /**
      * @dataProvider provideTypeMapOptionsAndExpectedDocuments
      */
-    public function testTypeMapOptionWithOutputCollection(?array $typeMap, array $expectedDocuments): void
+    public function testTypeMapOptionWithOutputCollection(?array $typeMap = null, array $expectedDocuments): void
     {
         $this->createFixtures(3);
 
@@ -294,6 +306,8 @@ class MapReduceFunctionalTest extends FunctionalTestCase
 
     /**
      * Create data fixtures.
+     *
+     * @param integer $n
      */
     private function createFixtures(int $n): void
     {

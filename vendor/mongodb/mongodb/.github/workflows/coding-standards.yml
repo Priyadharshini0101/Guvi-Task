@@ -5,16 +5,14 @@ on:
     branches:
       - "v*.*"
       - "master"
-      - "feature/*"
   push:
     branches:
       - "v*.*"
       - "master"
-      - "feature/*"
 
 jobs:
-  phpcs:
-    name: "phpcs"
+  coding-standards:
+    name: "Coding Standards"
     runs-on: "ubuntu-20.04"
 
     strategy:
@@ -44,7 +42,8 @@ jobs:
           restore-keys: ${{ steps.extcache.outputs.key }}
 
       - name: "Install PHP"
-        uses: "shivammathur/setup-php@v2"
+        # Todo: switch to @v2 once a tag has been created
+        uses: "shivammathur/setup-php@develop"
         with:
           coverage: "none"
           extensions: "mongodb-${{ matrix.driver-version }}"

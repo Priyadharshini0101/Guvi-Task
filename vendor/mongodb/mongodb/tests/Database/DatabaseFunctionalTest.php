@@ -2,7 +2,6 @@
 
 namespace MongoDB\Tests\Database;
 
-use MongoDB\Collection;
 use MongoDB\Database;
 use MongoDB\Driver\BulkWrite;
 use MongoDB\Driver\Cursor;
@@ -11,7 +10,6 @@ use MongoDB\Driver\ReadPreference;
 use MongoDB\Driver\WriteConcern;
 use MongoDB\Exception\InvalidArgumentException;
 use MongoDB\Operation\CreateIndexes;
-use TypeError;
 
 use function array_key_exists;
 use function current;
@@ -24,9 +22,9 @@ class DatabaseFunctionalTest extends FunctionalTestCase
     /**
      * @dataProvider provideInvalidDatabaseNames
      */
-    public function testConstructorDatabaseNameArgument($databaseName, string $expectedExceptionClass): void
+    public function testConstructorDatabaseNameArgument($databaseName): void
     {
-        $this->expectException($expectedExceptionClass);
+        $this->expectException(InvalidArgumentException::class);
         // TODO: Move to unit test once ManagerInterface can be mocked (PHPC-378)
         new Database($this->manager, $databaseName);
     }
@@ -34,8 +32,8 @@ class DatabaseFunctionalTest extends FunctionalTestCase
     public function provideInvalidDatabaseNames()
     {
         return [
-            [null, TypeError::class],
-            ['', InvalidArgumentException::class],
+            [null],
+            [''],
         ];
     }
 
@@ -160,19 +158,6 @@ class DatabaseFunctionalTest extends FunctionalTestCase
         $this->assertCollectionCount($this->getNamespace(), 0);
     }
 
-    public function testDropCollection(): void
-    {
-        $bulkWrite = new BulkWrite();
-        $bulkWrite->insert(['x' => 1]);
-
-        $writeResult = $this->manager->executeBulkWrite($this->getNamespace(), $bulkWrite);
-        $this->assertEquals(1, $writeResult->getInsertedCount());
-
-        $commandResult = $this->database->dropCollection($this->getCollectionName());
-        $this->assertCommandSucceeded($commandResult);
-        $this->assertCollectionDoesNotExist($this->getCollectionName());
-    }
-
     public function testGetSelectsCollectionAndInheritsOptions(): void
     {
         $databaseOptions = ['writeConcern' => new WriteConcern(WriteConcern::MAJORITY)];
@@ -224,68 +209,6 @@ class DatabaseFunctionalTest extends FunctionalTestCase
             $this->assertSame(3, $commandResult['expireAfterSeconds_old']);
             $this->assertSame(1000, $commandResult['expireAfterSeconds_new']);
         }
-    }
-
-    public function testRenameCollectionToSameDatabase(): void
-    {
-        $toCollectionName = $this->getCollectionName() . '.renamed';
-        $toCollection = new Collection($this->manager, $this->getDatabaseName(), $toCollectionName);
-
-        $bulkWrite = new BulkWrite();
-        $bulkWrite->insert(['_id' => 1]);
-
-        $writeResult = $this->manager->executeBulkWrite($this->getNamespace(), $bulkWrite);
-        $this->assertEquals(1, $writeResult->getInsertedCount());
-
-        $commandResult = $this->database->renameCollection(
-            $this->getCollectionName(),
-            $toCollectionName,
-            null,
-            ['dropTarget' => true]
-        );
-        $this->assertCommandSucceeded($commandResult);
-        $this->assertCollectionDoesNotExist($this->getCollectionName());
-        $this->assertCollectionExists($toCollectionName);
-
-        $this->assertSameDocument(['_id' => 1], $toCollection->findOne());
-        $toCollection->drop();
-    }
-
-    public function testRenameCollectionToDifferentDatabase(): void
-    {
-        $toDatabaseName = $this->getDatabaseName() . '_renamed';
-        $toDatabase = new Database($this->manager, $toDatabaseName);
-
-        /* When renaming an unsharded collection, mongos requires the source
-        * and target database to both exist on the primary shard. In practice, this
-        * means we need to create the target database explicitly.
-        * See: https://mongodb.com/docs/manual/reference/command/renameCollection/#unsharded-collections
-        */
-        if ($this->isShardedCluster()) {
-            $toDatabase->foo->insertOne(['_id' => 1]);
-        }
-
-        $toCollectionName = $this->getCollectionName() . '.renamed';
-        $toCollection = new Collection($this->manager, $toDatabaseName, $toCollectionName);
-
-        $bulkWrite = new BulkWrite();
-        $bulkWrite->insert(['_id' => 1]);
-
-        $writeResult = $this->manager->executeBulkWrite($this->getNamespace(), $bulkWrite);
-        $this->assertEquals(1, $writeResult->getInsertedCount());
-
-        $commandResult = $this->database->renameCollection(
-            $this->getCollectionName(),
-            $toCollectionName,
-            $toDatabaseName
-        );
-        $this->assertCommandSucceeded($commandResult);
-        $this->assertCollectionDoesNotExist($this->getCollectionName());
-        $this->assertCollectionExists($toCollectionName, $toDatabaseName);
-
-        $this->assertSameDocument(['_id' => 1], $toCollection->findOne());
-
-        $toDatabase->drop();
     }
 
     public function testSelectCollectionInheritsOptions(): void

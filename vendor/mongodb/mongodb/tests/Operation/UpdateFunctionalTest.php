@@ -7,7 +7,6 @@ use MongoDB\Collection;
 use MongoDB\Driver\BulkWrite;
 use MongoDB\Driver\WriteConcern;
 use MongoDB\Exception\BadMethodCallException;
-use MongoDB\Exception\UnsupportedException;
 use MongoDB\Operation\Update;
 use MongoDB\Tests\CommandObserver;
 use MongoDB\UpdateResult;
@@ -28,6 +27,10 @@ class UpdateFunctionalTest extends FunctionalTestCase
 
     public function testSessionOption(): void
     {
+        if (version_compare($this->getServerVersion(), '3.6.0', '<')) {
+            $this->markTestSkipped('Sessions are not supported');
+        }
+
         (new CommandObserver())->observe(
             function (): void {
                 $operation = new Update(
@@ -48,6 +51,10 @@ class UpdateFunctionalTest extends FunctionalTestCase
 
     public function testBypassDocumentValidationSetWhenTrue(): void
     {
+        if (version_compare($this->getServerVersion(), '3.2.0', '<')) {
+            $this->markTestSkipped('bypassDocumentValidation is not supported');
+        }
+
         (new CommandObserver())->observe(
             function (): void {
                 $operation = new Update(
@@ -69,6 +76,10 @@ class UpdateFunctionalTest extends FunctionalTestCase
 
     public function testBypassDocumentValidationUnsetWhenFalse(): void
     {
+        if (version_compare($this->getServerVersion(), '3.2.0', '<')) {
+            $this->markTestSkipped('bypassDocumentValidation is not supported');
+        }
+
         (new CommandObserver())->observe(
             function (): void {
                 $operation = new Update(
@@ -85,26 +96,6 @@ class UpdateFunctionalTest extends FunctionalTestCase
                 $this->assertObjectNotHasAttribute('bypassDocumentValidation', $event['started']->getCommand());
             }
         );
-    }
-
-    public function testHintOptionAndUnacknowledgedWriteConcernUnsupportedClientSideError(): void
-    {
-        if (version_compare($this->getServerVersion(), '4.2.0', '>=')) {
-            $this->markTestSkipped('hint is supported');
-        }
-
-        $operation = new Update(
-            $this->getDatabaseName(),
-            $this->getCollectionName(),
-            ['_id' => 1],
-            ['$inc' => ['x' => 1]],
-            ['hint' => '_id_', 'writeConcern' => new WriteConcern(0)]
-        );
-
-        $this->expectException(UnsupportedException::class);
-        $this->expectExceptionMessage('Hint is not supported by the server executing this operation');
-
-        $operation->execute($this->getPrimaryServer());
     }
 
     public function testUpdateOne(): void
@@ -267,6 +258,8 @@ class UpdateFunctionalTest extends FunctionalTestCase
 
     /**
      * Create data fixtures.
+     *
+     * @param integer $n
      */
     private function createFixtures(int $n): void
     {

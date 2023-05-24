@@ -7,7 +7,6 @@ use MongoDB\DeleteResult;
 use MongoDB\Driver\BulkWrite;
 use MongoDB\Driver\WriteConcern;
 use MongoDB\Exception\BadMethodCallException;
-use MongoDB\Exception\UnsupportedException;
 use MongoDB\Operation\Delete;
 use MongoDB\Tests\CommandObserver;
 
@@ -64,28 +63,12 @@ class DeleteFunctionalTest extends FunctionalTestCase
         $this->assertSameDocuments($expected, $this->collection->find());
     }
 
-    public function testHintOptionAndUnacknowledgedWriteConcernUnsupportedClientSideError(): void
-    {
-        if (version_compare($this->getServerVersion(), '4.4.0', '>=')) {
-            $this->markTestSkipped('hint is supported');
-        }
-
-        $operation = new Delete(
-            $this->getDatabaseName(),
-            $this->getCollectionName(),
-            [],
-            0,
-            ['hint' => '_id_', 'writeConcern' => new WriteConcern(0)]
-        );
-
-        $this->expectException(UnsupportedException::class);
-        $this->expectExceptionMessage('Hint is not supported by the server executing this operation');
-
-        $operation->execute($this->getPrimaryServer());
-    }
-
     public function testSessionOption(): void
     {
+        if (version_compare($this->getServerVersion(), '3.6.0', '<')) {
+            $this->markTestSkipped('Sessions are not supported');
+        }
+
         (new CommandObserver())->observe(
             function (): void {
                 $operation = new Delete(
@@ -129,6 +112,8 @@ class DeleteFunctionalTest extends FunctionalTestCase
 
     /**
      * Create data fixtures.
+     *
+     * @param integer $n
      */
     private function createFixtures(int $n): void
     {

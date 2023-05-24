@@ -14,7 +14,6 @@ use function strpos;
  * Retryable reads spec tests.
  *
  * @see https://github.com/mongodb/specifications/tree/master/source/retryable-reads
- * @group serverless
  */
 class RetryableReadsSpecTest extends FunctionalTestCase
 {
@@ -24,9 +23,6 @@ class RetryableReadsSpecTest extends FunctionalTestCase
         'listDatabaseObjects' => 'Not implemented',
         'listIndexNames' => 'Not implemented',
     ];
-
-    /** @var array */
-    private static $incompleteTests = [];
 
     /**
      * Assert that the expected and actual command documents match.
@@ -53,7 +49,7 @@ class RetryableReadsSpecTest extends FunctionalTestCase
      * @group matrix-testing-exclude-server-4.4-driver-4.2
      * @group matrix-testing-exclude-server-5.0-driver-4.2
      */
-    public function testRetryableReads(stdClass $test, ?array $runOn, $data, string $databaseName, ?string $collectionName, ?string $bucketName): void
+    public function testRetryableReads(stdClass $test, ?array $runOn = null, $data, string $databaseName, ?string $collectionName, ?string $bucketName): void
     {
         if (isset($runOn)) {
             $this->checkServerRequirements($runOn);
@@ -67,10 +63,6 @@ class RetryableReadsSpecTest extends FunctionalTestCase
 
         if (strpos($this->dataDescription(), 'changeStreams-') === 0) {
             $this->skipIfChangeStreamIsNotSupported();
-        }
-
-        if (isset(self::$incompleteTests[$this->dataDescription()])) {
-            $this->markTestIncomplete(self::$incompleteTests[$this->dataDescription()]);
         }
 
         $context = Context::fromRetryableReads($test, $databaseName, $collectionName, $bucketName);
@@ -92,7 +84,7 @@ class RetryableReadsSpecTest extends FunctionalTestCase
         }
 
         if (isset($test->expectations)) {
-            $commandExpectations = CommandExpectations::fromRetryableReads($context->getClient(), $test->expectations);
+            $commandExpectations = CommandExpectations::fromRetryableReads($test->expectations);
             $commandExpectations->startMonitoring();
         }
 

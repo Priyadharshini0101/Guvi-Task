@@ -111,48 +111,22 @@ class TransactionsSpecTest extends FunctionalTestCase
     }
 
     /**
-     * @dataProvider provideTransactionsTests
-     * @group serverless
-     */
-    public function testTransactions(stdClass $test, ?array $runOn, array $data, ?string $databaseName = null, ?string $collectionName = null): void
-    {
-        $this->runTransactionTest($test, $runOn, $data, $databaseName, $collectionName);
-    }
-
-    public function provideTransactionsTests(): array
-    {
-        return $this->provideTests('transactions');
-    }
-
-    /**
-     * @dataProvider provideTransactionsConvenientApiTests
-     */
-    public function testTransactionsConvenientApi(stdClass $test, ?array $runOn, array $data, ?string $databaseName = null, ?string $collectionName = null): void
-    {
-        $this->runTransactionTest($test, $runOn, $data, $databaseName, $collectionName);
-    }
-
-    public function provideTransactionsConvenientApiTests(): array
-    {
-        return $this->provideTests('transactions-convenient-api');
-    }
-
-    /**
      * Execute an individual test case from the specification.
      *
+     * @dataProvider provideTests
      * @param stdClass $test           Individual "tests[]" document
      * @param array    $runOn          Top-level "runOn" array with server requirements
      * @param array    $data           Top-level "data" array to initialize collection
      * @param string   $databaseName   Name of database under test
      * @param string   $collectionName Name of collection under test
      */
-    private function runTransactionTest(stdClass $test, ?array $runOn, array $data, ?string $databaseName = null, ?string $collectionName = null): void
+    public function testTransactions(stdClass $test, ?array $runOn = null, array $data, ?string $databaseName = null, ?string $collectionName = null): void
     {
         if (isset(self::$incompleteTests[$this->dataDescription()])) {
             $this->markTestIncomplete(self::$incompleteTests[$this->dataDescription()]);
         }
 
-        $useMultipleMongoses = isset($test->useMultipleMongoses) && $test->useMultipleMongoses && $this->isMongos();
+        $useMultipleMongoses = isset($test->useMultipleMongoses) && $test->useMultipleMongoses && $this->isShardedCluster();
 
         if (isset($runOn)) {
             $this->checkServerRequirements($runOn);
@@ -178,7 +152,7 @@ class TransactionsSpecTest extends FunctionalTestCase
         }
 
         if (isset($test->expectations)) {
-            $commandExpectations = CommandExpectations::fromTransactions($context->getClient(), $test->expectations);
+            $commandExpectations = CommandExpectations::fromTransactions($test->expectations);
             $commandExpectations->startMonitoring();
         }
 
@@ -199,11 +173,11 @@ class TransactionsSpecTest extends FunctionalTestCase
         }
     }
 
-    private function provideTests(string $dir): array
+    public function provideTests()
     {
         $testArgs = [];
 
-        foreach (glob(__DIR__ . '/' . $dir . '/*.json') as $filename) {
+        foreach (glob(__DIR__ . '/transactions*/*.json') as $filename) {
             $json = $this->decodeJson(file_get_contents($filename));
             $group = basename(dirname($filename)) . '/' . basename($filename, '.json');
             $runOn = $json->runOn ?? null;
@@ -229,10 +203,8 @@ class TransactionsSpecTest extends FunctionalTestCase
      */
     public function testStartingNewTransactionOnPinnedSessionUnpinsSession(): void
     {
-        $this->skipIfTransactionsAreNotSupported();
-
-        if (! $this->isMongos()) {
-            $this->markTestSkipped('Pinning tests require mongos');
+        if (! $this->isShardedClusterUsingReplicasets()) {
+            $this->markTestSkipped('Mongos pinning tests can only run on sharded clusters using replica sets');
         }
 
         $client = self::createTestClient($this->getUri(true));
@@ -269,10 +241,8 @@ class TransactionsSpecTest extends FunctionalTestCase
      */
     public function testRunningNonTransactionOperationOnPinnedSessionUnpinsSession(): void
     {
-        $this->skipIfTransactionsAreNotSupported();
-
-        if (! $this->isMongos()) {
-            $this->markTestSkipped('Pinning tests require mongos');
+        if (! $this->isShardedClusterUsingReplicasets()) {
+            $this->markTestSkipped('Mongos pinning tests can only run on sharded clusters using replica sets');
         }
 
         $client = self::createTestClient($this->getUri(true));
@@ -320,11 +290,6 @@ class TransactionsSpecTest extends FunctionalTestCase
      */
     private static function killAllSessions(): void
     {
-        // killAllSessions is not supported on serverless, see CLOUDP-84298
-        if (static::isServerless()) {
-            return;
-        }
-
         $manager = static::createTestManager();
         $primary = $manager->selectServer(new ReadPreference('primary'));
 
@@ -352,7 +317,8 @@ class TransactionsSpecTest extends FunctionalTestCase
     /**
      * Work around potential error executing distinct on sharded clusters.
      *
-     * @see https://github.com/mongodb/specifications/tree/master/source/transactions/tests#why-do-tests-that-run-distinct-sometimes-fail-with-staledbversion
+     * @param array $operations
+     * @see https://github.com/mongodb/specifications/tree/master/source/transactions/tests#why-do-tests-that-run-distinct-sometimes-fail-with-staledbversionts.
      */
     private function preventStaleDbVersionError(array $operations): void
     {

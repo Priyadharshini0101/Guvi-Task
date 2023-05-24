@@ -58,7 +58,7 @@ class AtlasDataLakeSpecTest extends FunctionalTestCase
      * @param string   $databaseName   Name of database under test
      * @param string   $collectionName Name of collection under test
      */
-    public function testAtlasDataLake(stdClass $test, ?array $runOn, array $data, ?string $databaseName = null, ?string $collectionName = null): void
+    public function testAtlasDataLake(stdClass $test, ?array $runOn = null, array $data, ?string $databaseName = null, ?string $collectionName = null): void
     {
         if (isset($runOn)) {
             $this->checkServerRequirements($runOn);
@@ -83,7 +83,7 @@ class AtlasDataLakeSpecTest extends FunctionalTestCase
         }
 
         if (isset($test->expectations)) {
-            $commandExpectations = CommandExpectations::fromCrud($context->getClient(), (array) $test->expectations);
+            $commandExpectations = CommandExpectations::fromCrud((array) $test->expectations);
             $commandExpectations->startMonitoring();
         }
 

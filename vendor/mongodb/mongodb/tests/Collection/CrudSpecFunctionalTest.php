@@ -32,15 +32,10 @@ use function version_compare;
  *
  * @see https://github.com/mongodb/specifications/tree/master/source/crud/tests
  *
- * @group serverless
  * @group matrix-testing-exclude-server-5.0-driver-4.0
  */
 class CrudSpecFunctionalTest extends FunctionalTestCase
 {
-    public const SERVERLESS_ALLOW = 'allow';
-    public const SERVERLESS_FORBID = 'forbid';
-    public const SERVERLESS_REQUIRE = 'require';
-
     /** @var Collection */
     private $expectedCollection;
 
@@ -55,13 +50,11 @@ class CrudSpecFunctionalTest extends FunctionalTestCase
     /**
      * @dataProvider provideSpecificationTests
      */
-    public function testSpecification(array $initialData, array $test, $minServerVersion, $maxServerVersion, $serverless): void
+    public function testSpecification(array $initialData, array $test, $minServerVersion, $maxServerVersion): void
     {
         if (isset($minServerVersion) || isset($maxServerVersion)) {
             $this->checkServerVersion($minServerVersion, $maxServerVersion);
         }
-
-        $this->checkServerlessRequirement($serverless);
 
         $expectedData = $test['outcome']['collection']['data'] ?? null;
         $this->initializeData($initialData, $expectedData);
@@ -90,15 +83,12 @@ class CrudSpecFunctionalTest extends FunctionalTestCase
         foreach (glob(__DIR__ . '/spec-tests/*/*.json') as $filename) {
             $json = json_decode(file_get_contents($filename), true);
 
+            $minServerVersion = $json['minServerVersion'] ?? null;
+            $maxServerVersion = $json['maxServerVersion'] ?? null;
+
             foreach ($json['tests'] as $test) {
                 $name = str_replace(' ', '_', $test['description']);
-                $testArgs[$name] = [
-                    $json['data'],
-                    $test,
-                    $json['minServerVersion'] ?? null,
-                    $json['maxServerVersion'] ?? null,
-                    $json['serverless'] ?? null,
-                ];
+                $testArgs[$name] = [$json['data'], $test, $minServerVersion, $maxServerVersion];
             }
         }
 
@@ -107,6 +97,9 @@ class CrudSpecFunctionalTest extends FunctionalTestCase
 
     /**
      * Assert that the collections contain equivalent documents.
+     *
+     * @param Collection $expectedCollection
+     * @param Collection $actualCollection
      */
     private function assertEquivalentCollections(Collection $expectedCollection, Collection $actualCollection): void
     {
@@ -120,35 +113,11 @@ class CrudSpecFunctionalTest extends FunctionalTestCase
         }
     }
 
-    private function checkServerlessRequirement(?string $serverless): void
-    {
-        switch ($serverless) {
-            case null:
-            case self::SERVERLESS_ALLOW:
-                return;
-
-            case self::SERVERLESS_FORBID:
-                if ($this->isServerless()) {
-                    $this->markTestSkipped('Test does not apply on serverless');
-                }
-
-                return;
-
-            case self::SERVERLESS_REQUIRE:
-                if (! $this->isServerless()) {
-                    $this->markTestSkipped('Test requires serverless');
-                }
-
-                return;
-
-            default:
-                $this->fail(sprintf('Unknown serverless requirement "%s".', $serverless));
-        }
-    }
-
     /**
      * Checks that the server version is within the allowed bounds (if any).
      *
+     * @param string|null $minServerVersion
+     * @param string|null $maxServerVersion
      * @throws PHPUnit_Framework_SkippedTestError
      */
     private function checkServerVersion(?string $minServerVersion, ?string $maxServerVersion): void
@@ -167,6 +136,7 @@ class CrudSpecFunctionalTest extends FunctionalTestCase
     /**
      * Executes an "operation" block.
      *
+     * @param array $operation
      * @return mixed
      * @throws LogicException if the operation is unsupported
      */
@@ -254,7 +224,10 @@ class CrudSpecFunctionalTest extends FunctionalTestCase
     /**
      * Executes an "outcome" block.
      *
-     * @param mixed $result
+     * @param array            $operation
+     * @param array            $outcome
+     * @param mixed            $result
+     * @param RuntimeException $exception
      * @return mixed
      * @throws LogicException if the operation is unsupported
      */
@@ -291,6 +264,8 @@ class CrudSpecFunctionalTest extends FunctionalTestCase
      *
      * If no result can be extracted, null will be returned.
      *
+     * @param array            $operation
+     * @param RuntimeException $exception
      * @return mixed
      */
     private function extractResultFromException(array $operation, array $outcome, RuntimeException $exception)
@@ -321,6 +296,7 @@ class CrudSpecFunctionalTest extends FunctionalTestCase
     /**
      * Executes the "result" section of an "outcome" block.
      *
+     * @param array $operation
      * @param mixed $expectedResult
      * @param mixed $actualResult
      * @throws LogicException if the operation is unsupported
@@ -486,6 +462,9 @@ class CrudSpecFunctionalTest extends FunctionalTestCase
 
     /**
      * Initializes data in the test collections.
+     *
+     * @param array $initialData
+     * @param array $expectedData
      */
     private function initializeData(array $initialData, ?array $expectedData = null): void
     {
@@ -500,6 +479,9 @@ class CrudSpecFunctionalTest extends FunctionalTestCase
 
     /**
      * Prepares a request element for a bulkWrite operation.
+     *
+     * @param array $request
+     * @return array
      */
     private function prepareBulkWriteRequest(array $request): array
     {
@@ -542,6 +524,9 @@ class CrudSpecFunctionalTest extends FunctionalTestCase
 
     /**
      * Prepares arguments for findOneAndReplace and findOneAndUpdate operations.
+     *
+     * @param array $arguments
+     * @return array
      */
     private function prepareFindAndModifyArguments(array $arguments): array
     {
