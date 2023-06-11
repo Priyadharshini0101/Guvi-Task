@@ -1,4 +1,6 @@
 var page = "./profile.html";
+
+
 $("#form").submit(function (e) {    
     e.preventDefault();
     let email = document.getElementById("email").value;

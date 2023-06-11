@@ -4,7 +4,7 @@ $username = "root";
 $password = ""; 
 $database = "authenticate"; 
 
-
+  //Connecting to the sql server
   $conn = new mysqli($servername, $username, $password, $database);
 
   if ($conn->connect_error) {
@@ -14,12 +14,13 @@ $database = "authenticate";
   $email = $_POST["email"];
   $password = $_POST["password"];
 
+  //Prepared statements
   $stmt = $conn->prepare("SELECT * FROM users WHERE email = ? && password = ?");
   $stmt->bind_param("ss", $email, $password);
   $stmt->execute();
   $stmt->store_result();
 
-
+  
   if($stmt->num_rows > 0){
     try{
     require_once dirname(__DIR__, 1) . "/vendor/predis/predis/autoload.php";

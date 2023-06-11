@@ -18,8 +18,6 @@
 
           <div class="card" style="border-radius: 15px;">
             <div class="card-body ">
-
-            
               <h4 class="mb-2 text-center" id="username_1"></h4>
               <p class="text-muted mb-4 text-center" id="email_1"> </p>
               <div class="card-title text-primary">
@@ -41,6 +39,7 @@
                 </div>
                 <div class="form-group">
                   <label for="exampleInputPhoneNumber1"> Phone Number </label>
+                  <!--Replace the values which are no number to ''-->
                   <input type="tel" class="form-control form-control-sm" id="phonenumber"  oninput="this.value = this.value.replace(/[^0-9]/g, '')" maxlength="10"
                   pattern="[0-9]{10}" aria-describedby="phonenumberHelp">
                 </div>
